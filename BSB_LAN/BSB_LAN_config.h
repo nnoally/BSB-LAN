@@ -27,7 +27,7 @@ byte UseEEPROM = 1;
 /*
  * Configuration of the network settings
 */
-uint8_t network_type = LAN;             // Set to LAN (0) when using Ethernet connection. Set to WLAN (1) when using WiFi. Arduino users using WiFiSpi have to activate the definement below as well.
+uint8_t network_type = LAN;             // Set to LAN (0) when using Ethernet connection. Set to WLAN (1) when using WiFi.
 uint16_t HTTPPort = 80;
 bool useDHCP = true;                    // Set to false if you want to use a fixed IP.
 byte ip_addr[4] = {192,168,178,88};     // Please note the commas instead of dots!!!  Set useDHCP (above) to false if you want to use a fixed IP.
@@ -37,10 +37,7 @@ byte subnet_addr[4] = {255,255,255,0};  // Subnet address. Please use commas ins
 
 char wifi_ssid[32] = "YourWiFiNetwork"; // enter your WiFi network name (SSID) here
 char wifi_pass[64] = "YourWiFiPassword";// enter your WiFi password here
-uint8_t bssid[6] = {0x00, 0x00, 0x00, 0x00, 0x00, 0x00};  // enter specific BSSID address here to ensure connecting to a specific router. Leave all zeros in normal circumstances.
-
-//#define WIFISPI                         // Activate this on the Arduino to enable WiFi via WiFiSpi. DO NOT enable this on an ESP32.
-#define WIFI_SPI_SS_PIN 12              // defines SPI-SS pin for Arduino-ESP8266 connection
+uint8_t bssid[6] = {0x00, 0x00, 0x00, 0x00, 0x00, 0x00};  // enter specific BSSID address here to ensure connecting to a specific access point. Set to all zeros under normal circumstances.
 
 char mDNS_hostname[32] = "BSB-LAN";     // Advertises the hostname in the local network. Set this to an empty string if you don't want your device to be found under this name in your network.
 
@@ -111,16 +108,9 @@ byte dest_address = 0x00;
 // PPS:
 // - set 'pps_write' to "1" to enable writing to heater - only use this if there is no other room controller (such as QAA50/QAA70) active.
 bool pps_write = 0;
-byte QAA_TYPE = 0x53;  // 0x53 = QAA70, 0x52 = QAA50, 0x5A = QAA10, 0x37 = QAA95, 0x66 = BMU, 0xEA = MCBA/REA70/DC225, 0x43 = RVD130
+byte QAA_TYPE = 0x53;  // 0x53 = QAA70, 0x52 = QAA50, 0x37 = QAA95, 0x4D = QAW10, 0x4E = QAW20, 0x58 = MCBA/REA70/DC225, 0x5A = QAA10, 0x5B = QAA20, 0x5D = QAA12/13, 0x66 = BMU, 0x43 = RVD130
 // Setting bus pins
 byte bus_pins[2] = {0,0}; //First value - RX pin, second value - TX pin. 0,0 - auto select (19,18 for Due, 16,17 for NodeMCU, 36,17 for Olimex EVB, 36,5 for Olimex POE and 68,69 for Mega).
-
-/* Set the device family and device variant of your heating system. Only change this if you _really_ know what you are doing!
- * Set fixed_device_family and fixed_device_variant to your device family and variant (parameters 6225 and 6226) here
- * if heating system is not running when BSB-LAN is powered on.
-*/
-uint16_t fixed_device_family = 0;
-uint16_t fixed_device_variant = 0;
 
 // defines default flag for parameters
 // use "#define DEFAULT_FLAG FL_SW_CTL_RONLY" to control read/write functionality via configuration in web interface.
@@ -129,7 +119,7 @@ uint16_t fixed_device_variant = 0;
 #define DEFAULT_FLAG FL_SW_CTL_RONLY
 
 // Setting to determine on ESP32 whether to use SD card adapter (if present) or ESP32's internal flash.
-// SD card should always be preferred to protect the ESP32's flash from wearing down.
+// SD card (MBR partition / FAT format) should always be preferred to protect the ESP32's flash from wearing down.
 uint8_t LogDestination = SDCARD;  // Possible logging devices: SDCARD (0) = SD card, FLASH (1) = ESP32's flash memory
 // If you use an SD card reader on the Joy-It ESP32 NodeMCU, you can configure the SPI pins here:
 #define SD_SCK 18
@@ -151,7 +141,7 @@ uint8_t logTelegram = LOGTELEGRAM_OFF;
 // Logging data from parameters
 // Interval and list of parameters can be redefined through /L command during runtime
 // Data will be written to "datalog.txt"
-unsigned long log_interval = 30;  // Logging interval (to SD card, UDP and MQTT broker) in seconds
+unsigned long log_interval = 300;  // Logging interval (to SD card, UDP and MQTT broker) in seconds
 parameter log_parameters[40] = {
 // parameter, destination (as in dest_address below, -1 means "default (dest_address) address")
   {8700, -1},                   // Außentemperatur
@@ -174,16 +164,27 @@ char mqtt_broker_addr[33] = "10.0.10.3:1883";    // MQTT broker. Adjust LoggingM
 char MQTTUsername[65] = "jeedom";                 // Set username for MQTT broker here or set empty string if no username/password is used.
 char MQTTPassword[65] = "jeedom";                 // Set password for MQTT broker here or set empty string if no password is used.
 char MQTTTopicPrefix[65] = "BSB-LAN"; 	        // Mandatory: Choose the "topic" for MQTT messages here.
-byte mqtt_mode = 1; // MQTT: 1 - send messages in plain text format, 2 - send messages in JSON format, 3 - send messages in rich JSON format. Use this if you want a json package of your logging information printed to the mqtt topic
+bool MQTTRefAD = false;                         // Update the MQTT auto-discovery entries in case the broker loses this information.
+
+// MQTT mode
 // JSON payload will be of the structure: {"MQTTDeviceID": {"status":{"log_param1":"value1"}}}
 // rich JSON payload will be of the structure: {"MQTTDeviceID": {"id": "parmeter number from log values", "name": "parameter name from logvalues", "value": "query result", "desc": "enum value description", "unit": "unit of measurement", "error", error code}}
+byte mqtt_mode = 1; // MQTT: 1 - send messages in plain text format, 2 - send messages in JSON format, 3 - send messages in rich JSON format. Use this if you want a json package of your logging information printed to the mqtt topic
 
-// Optional: Define a device name to use as header in json payload. In case of empty string, "BSB-LAN" will be used.
-// This value is also used as a client ID towards the MQTT broker, change it if you have more than one BSB-LAN on your broker.
-char MQTTDeviceID[32] = "BSB-LAN";
+// MQTT unit settings
+// The default of CF_MQTT_UNIT_LOCALIZED will send unit strings in the configured language, exactly as shown in the BSB-LAN web interface.
+// The CF_MQTT_UNIT_HOMEASSISTANT sends unit strings in the exact format used by Home Assistant to avoid warning messages about unknown unit strings. Home Assistant currently doesn't handle localised units correctly for certain sensors.
+// Finally CF_MQTT_UNIT_NONE will send MQTT messags with no unit text.
+// This setting does not affect the web interface which will always show units in the localized language.
+// When selecting Home Assistant as the unit format, the 'device_class' string will be sent for compatible parameters during MQTT auto-discovery so that automations can correctly identify sensor classes.
+byte mqtt_unit_set = CF_MQTT_UNIT_LOCALIZED; // Unit localisation option for MQTT messages. Options are: CF_MQTT_UNIT_LOCALIZED, CF_MQTT_UNIT_HOMEASSISTANT, CF_MQTT_UNIT_NONE
 
-// Logging mode: 0 - disabled, 1 - write values to SD card, 2 - write 24h averages to SD card, 4 - send values to MQTT, 8 -  send values to UDP. Can be any sum of these values.
-byte LoggingMode = 4; //CF_LOGMODE_SD_CARD | CF_LOGMODE_24AVG | CF_LOGMODE_MQTT | CF_LOGMODE_UDP
+// Optional: Define a device name to use as header in the MQTT JSON payload. In case of empty string, "BSB-LAN" plus the last six digits of the device's MAC address will be used.
+// This value is also used as a client ID towards the MQTT broker.
+char MQTTDeviceID[32] = "BSB-LAN"";
+
+// Logging mode: 0 - disabled, 1 - write values to SD card, 2 - write 24h averages to SD card, 4 - send values to MQTT, 8 - send only logged parameter values to MQTT broker, 16 -  send values to UDP. Can be any sum of these values.
+byte LoggingMode = 0; //CF_LOGMODE_SD_CARD | CF_LOGMODE_24AVG | CF_LOGMODE_MQTT | CF_LOGMODE_MQTT_ONLY_LOG_PARAMS | CF_LOGMODE_UDP
 
 // Create 24h averages from these parameters and save data into averages.txt on SD-card.
 parameter avg_parameters[40] = {
@@ -191,6 +192,9 @@ parameter avg_parameters[40] = {
   {8700, -1},                         // Außentemperatur
   {8326, -1}                          // Brenner-Modulation
 };
+
+// In parameters with numerical values, this setting defines the value for a deactivated/inactive status. Defaults to "---", Home Assistant requires "None", other systems might require "0" to function properly.
+char replaceDisabled[10] = "---";
 
 // Define the pin for one wire temperature sensors. -1 = disable oneWire bus.
 int8_t One_Wire_Pin = -1;
@@ -247,9 +251,6 @@ char max_device_list[20][11] = {               // list of MAX! wall/heating ther
   "KEQ0505080"
 };
 
-// include commands from BSB_lan_custom.h to be executed at the end of each main loop
-//#define CUSTOM_COMMANDS
-
 /*
  * Check for new versions when accessing BSB-LAN's main page.
  * Doing so will poll the most recent version number from the BSB-LAN server.
@@ -264,22 +265,24 @@ bool enable_version_check = false;
 // Enable ESP32 over-the-air updates. 
 // Pro: You don't need to physically connect your PC to the ESP32 in order to update BSB-LAN.
 // Contra: Someone who has access to your network and finds out about BSB-LAN's username and password can install their own software on the ESP32.
-boolean enable_ota_update = false;
+bool enable_ota_update = true;
 
 // Reduce clock speed of ESP32 from 240 MHz to 80MHz, saving ca. 20% energy.
 // Works well when connecting via LAN, but since it reduces WiFi range and log file display times when using WiFi, it is disabled by default.
-boolean esp32_save_energy = false;
+bool esp32_save_energy = false;
 
 // "External" web server. Read files from SD-card / flash memory. Only static content: html, js, css, jpg, etc.
-boolean webserver = false;
+bool webserver = false;
 
 // Debug options
 byte debug_mode = 1;  // Debug mode: 0 - disabled, 1 - send debug messages to serial interface, 2 - send debug messages to telnet client
 byte verbose = 1;     // If set to 1, all messages on the bus are printed to debug interface. Set to 2 only if you are asked by the developers as the extensive output will significantly slow down the microcontroller.
-byte monitor = 0;     // Bus monitor mode. This is only necessary for in-depth debug sessions.
 bool show_unknown = true; // true - show all parameters, false - hide unknown parameters from web display (parameters will still be queried and therefore take time!)
 
-#define CONFIG_VERSION 38
+#define CONFIG_VERSION 43
+
+#define NO_TLS  // TLS is used, for example, when connecting securely to remote MQTT brokers. However, disabling TLS will save considerable amount of flash memory. Consider disabling TLS if you only connect to hosts in your local network and encounter flash memory shortage.
+//#define CUSTOM_PARTITION_TABLE  // If you use a microcontroller with more than 4MB flash (such as the POE-ISO 16MB), you can activate this definement, so that BSB-LAN will compile with a partition scheme other than "Minimal SPIFFS".
 
 /************************************************************************************/
 /************************************************************************************/
